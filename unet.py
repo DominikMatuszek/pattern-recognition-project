@@ -2,6 +2,46 @@ import tensorflow as tf
 import os 
 from matplotlib import pyplot as plt
 
+class UNet(tf.keras.models.Model):
+    def __init__(self):
+        super(UNet, self).__init__()
+        
+        self.conv_block_1 = tf.keras.models.Sequential([
+            tf.keras.layers.Conv2D(64, 3, activation="relu", padding="same"),
+            tf.keras.layers.Conv2D(64, 3, activation="relu", padding="same"),
+            tf.keras.layers.AveragePooling2D(),
+        ])
+        
+        self.conv_block_2 = tf.keras.models.Sequential([
+            tf.keras.layers.Conv2D(64, 3, activation="relu", padding="same"),
+            tf.keras.layers.Conv2D(64, 3, activation="relu", padding="same"),
+            tf.keras.layers.AveragePooling2D(),
+        ]) 
+        
+        self.deconv_block_1 = tf.keras.models.Sequential([
+            tf.keras.layers.Conv2DTranspose(64, 3, activation="relu", padding="same"),
+            tf.keras.layers.Conv2DTranspose(64, 3, activation="relu", padding="same"),
+            tf.keras.layers.UpSampling2D(),
+        ])
+          
+        self.deconv_block_2 = tf.keras.models.Sequential([
+            tf.keras.layers.Conv2DTranspose(64, 3, activation="relu", padding="same"),
+            tf.keras.layers.Conv2DTranspose(64, 3, activation="relu", padding="same"),
+            tf.keras.layers.UpSampling2D(),
+        ])
+
+    def call(self, x):
+        x = self.conv_block_1(x)
+        skip1 = x 
+        
+        x = self.conv_block_2(x)
+        x = self.deconv_block_1(x)
+        
+        x = x + skip1
+        x = self.deconv_block_2(x)
+        
+        return x          
+
 
 def generate():
     # Iterate through images at images/train folder
@@ -49,17 +89,17 @@ def main():
         print(mask.shape)
         break
     
-    model = tf.keras.models.Sequential([
-        tf.keras.layers.Conv2D(3, 3, activation="relu", padding="same"),
-        tf.keras.layers.Conv2D(3, 3, activation="relu", padding="same"),
-        tf.keras.layers.Conv2D(1, 3, activation="sigmoid", padding="same"),
-    ])
+    model = UNet()
     
     model.compile(optimizer="adam", loss="binary_crossentropy")
     
-    model.fit(dataset, epochs=1, batch_size=32)
+    model.build(input_shape=(None, 480, 640, 3))
+        
+    #model.fit(dataset, epochs=1, batch_size=32)
 
-    model.save("weak_model")
+    print(model.summary())
+
+    #model.save("weak_model")
 
 if __name__ == "__main__":
     main()
