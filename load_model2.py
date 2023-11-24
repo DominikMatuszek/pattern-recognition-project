@@ -6,13 +6,13 @@ from matplotlib import pyplot as plt
 
 def main():
     model = UNet()
-    model.load_state_dict(torch.load("m1", map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load("m3", map_location=torch.device('cpu')))
     model.eval()
     
     # Load image from images/test/1.jpg
-    image = torchvision.io.read_image("images/train/COCO_train2014_000000000009.jpg", mode=torchvision.io.image.ImageReadMode.RGB)
+    image = torchvision.io.read_image("test_masked.png", mode=torchvision.io.image.ImageReadMode.RGB)
     # Resize to 128x128
-    image = torchvision.transforms.functional.resize(image, (128, 128))
+    #image = torchvision.transforms.functional.resize(image, (128, 128))
     # Normalize
     image = image.float() / 255.0
     # Add batch dimension
@@ -27,10 +27,12 @@ def main():
     # Move the channel dimension to the end
     pred = pred.permute(1, 2, 0).detach().numpy()
     
-    # Show the base image
-    plt.imshow(image.squeeze(0).permute(1, 2, 0))
+    print(pred.shape)
     
-    plt.imshow(pred, alpha=0.5)
+    # Show the base image
+    #plt.imshow(image.squeeze(0).permute(1, 2, 0))
+    
+    plt.imshow(pred, alpha=1)
     
     plt.show()
     
