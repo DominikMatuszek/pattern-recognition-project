@@ -11,6 +11,8 @@ class UNet(torch.nn.Module):
         self.encoder2 = EncoderBlock(4,8) # out: 64
         self.encoder3 = EncoderBlock(8,16) # out: 32
         self.encoder4 = EncoderBlock(16,32) # out: 16
+        self.encoder5 = EncoderBlock(32,64) # out: 8
+        self.encoder6 = EncoderBlock(64,128) # out: 4
         
         
         self.decoder1 = DecoderBlock(128, 64)
