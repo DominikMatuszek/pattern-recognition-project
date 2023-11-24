@@ -45,19 +45,6 @@ class EncoderBlock(torch.nn.Module):
         x = self.downsample(x)
         
         return x
-    
-    def cuda(self):
-        super(EncoderBlock, self).cuda()
-        self.conv1.cuda()
-        self.conv2.cuda()
-        self.conv3.cuda()
-        self.conv4.cuda()
-        
-        self.activation.cuda()
-        self.bn.cuda()
-        self.downsample.cuda()
-        
-        return self
 
 # Gets image (B, C, H, W) and returns (B, C', H*2, W*2)
 class DecoderBlock(torch.nn.Module):
@@ -98,20 +85,7 @@ class DecoderBlock(torch.nn.Module):
         x = self.bn(x)
         x = self.upsample(x)
         
-        return x
-    
-    def cuda(self):
-        super(DecoderBlock, self).cuda()
-        self.conv1.cuda()
-        self.conv2.cuda()
-        self.conv3.cuda()
-        self.conv4.cuda()
-    
-        self.activation.cuda()
-        self.bn.cuda()
-        self.upsample.cuda()
-        
-        return self        
+        return x     
 
 class UNet(torch.nn.Module):
     def __init__(self):
@@ -164,7 +138,6 @@ class UNet(torch.nn.Module):
         x = self.final_activation(x)
         
         return x
- 
 
 def main():
     torch.autograd.set_detect_anomaly(True)
