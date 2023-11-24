@@ -10,7 +10,7 @@ U-Net training on the SALICON dataset can be performed by runnig the following c
 
 `python3 train_salicon.py`
 
-Dataset, needed for training, can be downloaded from [here](). It should be extracted to the `unet` directory.
+Dataset, needed for training, can be downloaded from [here](http://salicon.net/challenge-2017/).
 
 tl;dr: It failed, miserably. 
 
