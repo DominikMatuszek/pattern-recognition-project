@@ -1,15 +1,19 @@
 import torch 
 import timm 
 
-from mae_interpolator import InterpolatingMAE
-from saliency_dataset import SaliencyDataset
+from student_transformer import StudentTransformer
+from image_dataset import ImageDataset
 
 from tqdm import tqdm
 
-def main():  
-    vit_teacher = timm.create_model('deit3_large_patch16_224.fb_in1k', pretrained=True)
+from vit_rollout import VITAttentionRollout
 
-    for block in vit_teacher.blocks:
+from config import CONFIG
+
+def main():  
+    teacher = timm.create_model(CONFIG["teacher_model"], pretrained=True)
+
+    for block in teacher.blocks:
         block.attn.fused_attn = False
 
     if torch.cuda.is_available():
@@ -17,42 +21,54 @@ def main():
     else:
         device = torch.device('cpu')
 
-    dataset = SaliencyDataset("val/", vit_teacher, device=device)
+    dataset = ImageDataset(CONFIG["dataset_path"])
     
-    base_model = timm.create_model('vit_base_patch16_224.mae', pretrained=True)
-    model = InterpolatingMAE(base_model, 768, dataset.get_mask_shape()[0])
+    base_model = timm.create_model(CONFIG["student_model"], pretrained=True)
+    student = StudentTransformer(base_model, CONFIG["student_out_dim"], 14, 14)
 
-    model = model.to(device)
+    teacher = teacher.to(device)
+    student = student.to(device)
 
-    optimiser = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimiser = torch.optim.Adam(student.parameters(), lr=CONFIG["lr"])
     loss = torch.nn.BCELoss()
 
-    loader = torch.utils.data.DataLoader(dataset, batch_size=16, shuffle=True)
+    loader = torch.utils.data.DataLoader(dataset, batch_size=CONFIG["batch_size"], shuffle=True, pin_memory=True)
 
+    rollout = VITAttentionRollout(teacher, head_fusion="mean", discard_ratio=0.95)
 
-    for epoch in range(3):
+    epochs = CONFIG["epochs"]
+
+    for epoch in range(epochs):
         sum_loss = 0.0
 
-        for i, (img, mask) in tqdm(enumerate(loader), total=len(loader), desc=f"Epoch {epoch}"):
+        i = 0
+
+        tqdm_bar = tqdm(loader, total=len(loader))
+
+        for i, imgs in enumerate(tqdm_bar):
+            imgs = imgs.to(device)
+
+            with torch.no_grad():
+                teacher_rollouts = [torch.Tensor(rollout(img.unsqueeze(0))) for img in imgs]
+
+            teacher_rollouts = torch.stack(teacher_rollouts)
+
+            student_rollout = student(imgs)
+            student_rollout = student_rollout.to("cpu")
+
             optimiser.zero_grad()
 
-            out = model(img)
-
-            # Flatten the mask and out
-            mask = mask.reshape(mask.shape[0], -1)
-            out = out.reshape(out.shape[0], -1)
-
-            loss_val = loss(out, mask)
-            loss_val.backward()
+            l = loss(student_rollout, teacher_rollouts)
+            l.backward()
 
             optimiser.step()
 
-            sum_loss += loss_val.item()
+            sum_loss += l.item()   
 
-            if i % 100 == 1:
-                print("Loss: {}".format(sum_loss / (i+1)))
+            tqdm_bar.set_description(f"Epoch {epoch}; loss {sum_loss/(i+1)}")
+
             
-        torch.save(model.state_dict(), f"mae_interpolator7-epoch{epoch}.pt")
+        torch.save(student.state_dict(), f"student0-epoch{epoch}.pt")
 
 
 
