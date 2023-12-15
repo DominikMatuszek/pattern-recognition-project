@@ -53,6 +53,15 @@ def main():
 
             teacher_rollouts = torch.stack(teacher_rollouts)
 
+            if CONFIG["downsampling_strategy"] == "DOWNSIZE":
+                new_shape = (
+                    imgs.shape[2]//CONFIG["downsampling_factor"], # H
+                    imgs.shape[3]//CONFIG["downsampling_factor"] # W
+                )
+
+                imgs = torch.nn.functional.interpolate(imgs, size=new_shape, mode="bilinear")
+                imgs = torch.nn.functional.interpolate(imgs, size=(224, 224), mode="bilinear")
+
             student_rollout = student(imgs)
             student_rollout = student_rollout.to("cpu")
 
