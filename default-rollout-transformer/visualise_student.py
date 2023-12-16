@@ -20,7 +20,7 @@ def main():
     base_student = timm.create_model(CONFIG["student_model"], pretrained=True)
     
     model = StudentTransformer(base_student, base_out_dim=CONFIG["student_out_dim"], out_height=14, out_width=14)
-    model.load_state_dict(state_dict=torch.load("student0-epoch0.pt"))
+    model.load_state_dict(state_dict=torch.load("student-deit_tiny_distilled_patch16_224-epoch0-ft.pt"))
 
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -44,8 +44,6 @@ def main():
 
         print(img.shape)
         print(out.shape)
-
-
         print(mask.shape)
 
         axs[0].imshow(img)

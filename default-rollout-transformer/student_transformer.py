@@ -9,12 +9,16 @@ class StudentTransformer(torch.nn.Module):
         self.model = base 
         self.projection = torch.nn.Linear(base_out_dim, out_height * out_width)
         self.activation = torch.nn.Sigmoid()
+        self.finetuning = False
 
         self.out_height = out_height
         self.out_width = out_width
 
     def forward(self, x):
-        with torch.no_grad():
+        if not self.finetuning:
+            with torch.no_grad():
+                x = self.model(x)
+        else:
             x = self.model(x)
 
         x = self.projection(x)
