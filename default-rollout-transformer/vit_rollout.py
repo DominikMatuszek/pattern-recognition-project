@@ -1,5 +1,5 @@
 """
-Below code comes from the jacobgil/vit-explain repository
+Below code comes from the jacobgil/vit-explain repository with our modifications
 Licensed under the MIT License
 """
 
@@ -36,7 +36,10 @@ import numpy as np
 import cv2
 
 def rollout(attentions, discard_ratio, head_fusion):
-    result = torch.eye(attentions[0].size(-1))
+    attentions = [attention.unsqueeze(0) for attention in attentions]
+    device = attentions[0].device
+
+    result = torch.eye(attentions[0].size(-1), device=device)
     with torch.no_grad():
         for attention in attentions:
             if head_fusion == "mean":
@@ -55,7 +58,7 @@ def rollout(attentions, discard_ratio, head_fusion):
             indices = indices[indices != 0]
             flat[0, indices] = 0
 
-            I = torch.eye(attention_heads_fused.size(-1))
+            I = torch.eye(attention_heads_fused.size(-1), device=device)
             a = (attention_heads_fused + 1.0*I)/2
             a = a / a.sum(dim=-1)
 
@@ -66,16 +69,17 @@ def rollout(attentions, discard_ratio, head_fusion):
     mask = result[0, 0 , 1 :]
     # In case of 224x224 image, this brings us from 196 to 14
     width = int(mask.size(-1)**0.5)
-    mask = mask.reshape(width, width).numpy()
+    mask = mask.reshape(width, width).cpu().numpy()
     mask = mask / np.max(mask)
     return mask    
 
 class VITAttentionRollout:
     def __init__(self, model, attention_layer_name='attn_drop', head_fusion="mean",
-        discard_ratio=0.9):
+        discard_ratio=0.9, device='cpu'):
         self.model = model
         self.head_fusion = head_fusion
         self.discard_ratio = discard_ratio
+        self.device = device
         for name, module in self.model.named_modules():
             if attention_layer_name in name:
                 module.register_forward_hook(self.get_attention)
@@ -83,11 +87,16 @@ class VITAttentionRollout:
         self.attentions = []
 
     def get_attention(self, module, input, output):
-        self.attentions.append(output.cpu())
+        self.attentions.append(output.to(self.device))
 
     def __call__(self, input_tensor):
         self.attentions = []
         with torch.no_grad():
             output = self.model(input_tensor)
 
-        return rollout(self.attentions, self.discard_ratio, self.head_fusion)
+        att = [list(att) for att in self.attentions]
+        att = list(zip(*att))
+        results = [torch.Tensor(rollout(attention, self.discard_ratio, self.head_fusion)) for attention in att]
+        results = torch.stack(results)
+
+        return results

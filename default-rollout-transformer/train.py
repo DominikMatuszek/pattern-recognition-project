@@ -1,5 +1,6 @@
 import torch 
 import timm 
+import torchvision
 
 from student_transformer import StudentTransformer
 from image_dataset import ImageDataset
@@ -21,7 +22,22 @@ def main():
     else:
         device = torch.device('cpu')
 
-    dataset = ImageDataset(CONFIG["dataset_path"])
+    transforms = torchvision.transforms.Compose([
+        torchvision.transforms.ToTensor(),
+
+        # Augmentations
+        torchvision.transforms.RandomHorizontalFlip(),
+        torchvision.transforms.RandomVerticalFlip(),
+        torchvision.transforms.RandomRotation(90),
+
+        torchvision.transforms.RandomPerspective(),
+        torchvision.transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
+        
+        # Translations
+        torchvision.transforms.RandomAffine(0, translate=(0.1, 0.1)),
+    ])
+
+    dataset = ImageDataset(CONFIG["dataset_path"], transforms=transforms)
     
     base_model = timm.create_model(CONFIG["student_model"], pretrained=True)
     student = StudentTransformer(base_model, CONFIG["student_out_dim"], 14, 14)
@@ -34,7 +50,7 @@ def main():
 
     loader = torch.utils.data.DataLoader(dataset, batch_size=CONFIG["batch_size"], shuffle=True, pin_memory=True)
 
-    rollout = VITAttentionRollout(teacher, head_fusion="mean", discard_ratio=0.95)
+    rollout = VITAttentionRollout(teacher, head_fusion="mean", discard_ratio=0.95, device=device)
 
     epochs = CONFIG["epochs"]
 
@@ -49,9 +65,7 @@ def main():
             imgs = imgs.to(device)
 
             with torch.no_grad():
-                teacher_rollouts = [torch.Tensor(rollout(img.unsqueeze(0))) for img in imgs]
-
-            teacher_rollouts = torch.stack(teacher_rollouts)
+                teacher_rollouts = rollout(imgs)
 
             if CONFIG["downsampling_strategy"] == "DOWNSIZE":
                 new_shape = (
