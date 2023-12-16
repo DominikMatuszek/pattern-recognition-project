@@ -5,7 +5,7 @@ CONFIG = {
     'student_out_dim': 1000,
     'dataset_path': 'val/',
     'epochs': 3,
-    'batch_size': 64,
+    'batch_size': 32,
     'lr': 0.001,
     #'downsampling_strategy': 'MAE',
     'downsampling_strategy': 'DOWNSIZE',
