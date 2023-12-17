@@ -4,23 +4,22 @@
 
 *Code availabe [here](https://github.com/kacpermarzol/Pattern-recognition-project-basic-rollout-convnet")*
 
-We want to try a convolutional nerual network as a student for a visual transformer teacher. The plan was to downsample
+We want to try a convolutional neural network (ResNet) as a student for a visual transformer teacher. The plan was to downsample
 the image for studnet model and make it learn the attention from the teacher model (which uses the full image):
 
 ![pattern](images/pattern.jpg)
 
-For all experiments we used ResNet18 (11 million parameters) with trained weights. In the first attempt we used deit
+For all experiments we used ResNet18 (11 million parameters) with pretrained weights on ImageNet. In the first attempt we used deit
 tiny as a teacher, which has 5 million parameters, we also used exactly the same pictures as input for teacher and
-student. The results were promising:
+student. The results were promising: (from left to right: input image, teacher rollout, student output)
 
 ![readme1](images/readme1.png)
 ![readme2](images/readme2.png)
 
-We also checked that the model recognizes the same objects, which are in different places at on the picture:
-
+We checked if our model is prone to an inductive bias with respect to the central position of the main object
 ![readmex](images/readmex.png)
 
-Then we wanted to use a bigger architecture as a student, so we used deit large, altough some of its attention rollouts
+Then we wanted to use a bigger architecture for teacher, so we used deit large (300 million parameters), altough some of its attention rollouts
 are not very clear for humans:
 ![readme3](images/readme3.png)
 
@@ -32,10 +31,10 @@ picture that has been resized to 70x70, and then again upsampled to size 224x224
 ![readme5](images/readme4.png)
 ![readme5](images/readme5.png)
 
-Additionaly we added some heavy augmenations. Unfortunately this approach didn't manage to learn anything, moreover
+Additionaly we added some strong augmenations. Unfortunately this model didn't manage to learn anything, moreover
 after a few epochs it blew up and started outputing nans for everything.
 
-We reduced the augmentations, the model didn't blow up, yet still it didn't manage to learn anything meaningful:
+We reduced the augmentations, the model didn't blow up, but still it didn't manage to learn anything meaningful:
 
 ![readme6](images/readme6.png)
 ![readme7](images/readme7.png)
