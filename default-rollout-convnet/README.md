@@ -34,12 +34,12 @@ picture that has been resized to 70x70, and then again upsampled to size 224x224
 Additionaly we added some strong augmenations. Unfortunately this model didn't manage to learn anything, moreover
 after a few epochs it blew up and started outputing nans for everything.
 
-We reduced the augmentations, the model didn't blow up, but still it didn't manage to learn anything meaningful:
+We reduced the augmentations, the gradients didn't explode, but still it didn't manage to learn anything meaningful:
 
 ![readme6](images/readme6.png)
 ![readme7](images/readme7.png)
 
-Changing the learning rate (0.001 -> 0.0001) helped and we managed to get some nice results:
+Changing the learning rate (0.001 -> 0.0001) helped, and we managed to get some nice results:
 
 ![readme8](images/readme8.png)
 ![readme9](images/readme9.png)
