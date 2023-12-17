@@ -40,7 +40,7 @@ We reduced the augmentations, the model didn't blow up, yet still it didn't mana
 ![readme6](images/readme6.png)
 ![readme7](images/readme7.png)
 
-Changing the learning rate helped and we managed to get some nice results:
+Changing the learning rate (0.001 -> 0.0001) helped and we managed to get some nice results:
 
 ![readme8](images/readme8.png)
 ![readme9](images/readme9.png)
