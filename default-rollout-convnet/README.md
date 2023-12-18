@@ -2,10 +2,10 @@
 
 ### Approach 3: Basic attention rollout and convnet student
 
-*Code availabe [here](https://github.com/kacpermarzol/Pattern-recognition-project-basic-rollout-convnet")*
+*Code availabe [here](https://github.com/kacpermarzol/Pattern-recognition-project-basic-rollout-convnet)*
 
 We want to try a convolutional neural network (ResNet) as a student for a visual transformer teacher. The plan was to downsample
-the image for studnet model and make it learn the attention from the teacher model (which uses the full image):
+the image for studnet model and make it learn the attention from the teacher model (which uses the full image): 
 
 ![pattern](images/pattern.jpg)
 
