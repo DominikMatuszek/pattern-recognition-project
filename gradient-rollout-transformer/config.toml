@@ -1,0 +1,13 @@
+experiment_name= "basic_student"
+
+[student]
+    base_model_name = "vit_base_patch16_224.mae"
+    base_model_out = 768
+    out_height = 14
+    out_width = 14
+
+[training]
+    epochs = 5
+
+[teacher] 
+    model_name="deit_tiny_patch16_224"
