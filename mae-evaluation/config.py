@@ -1,0 +1,1 @@
+IMAGENET_VAL_DIR = '../imagenet'
