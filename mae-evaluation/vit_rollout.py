@@ -36,41 +36,54 @@ import numpy as np
 import cv2
 
 def rollout(attentions, discard_ratio, head_fusion):
-    attentions = [attention.unsqueeze(0) for attention in attentions]
+    #attentions = [attention.unsqueeze(0) for attention in attentions] # type: list[torch.Tensor]
     device = attentions[0].device
 
     result = torch.eye(attentions[0].size(-1), device=device)
     with torch.no_grad():
         for attention in attentions:
             if head_fusion == "mean":
-                attention_heads_fused = attention.mean(axis=1)
+                attention_heads_fused = attention.mean(axis=1) # type: torch.Tensor
             elif head_fusion == "max":
-                attention_heads_fused = attention.max(axis=1)[0]
+                attention_heads_fused = attention.max(axis=1)[0] # type: torch.Tensor
             elif head_fusion == "min":
-                attention_heads_fused = attention.min(axis=1)[0]
+                attention_heads_fused = attention.min(axis=1)[0] # type: torch.Tensor
             else:
                 raise "Attention head fusion type Not supported"
 
             # Drop the lowest attentions, but
             # don't drop the class token
+
             flat = attention_heads_fused.view(attention_heads_fused.size(0), -1)
+
+            # Flatten the last 2 dimensions
+
             _, indices = flat.topk(int(flat.size(-1)*discard_ratio), -1, False)
-            indices = indices[indices != 0]
-            flat[0, indices] = 0
+            cls_token_values = flat[:, 0]
 
-            I = torch.eye(attention_heads_fused.size(-1), device=device)
+            for i in range(flat.size(0)):
+                flat[i, indices[i]] = 0
+                flat[i, 0] = cls_token_values[i]
+
+            I = torch.eye(attention_heads_fused.size(-1), device=device)            
             a = (attention_heads_fused + 1.0*I)/2
-            a = a / a.sum(dim=-1)
-
+            summed = a.sum(dim=-1).squeeze(1)
+            a = torch.stack([a[i] / summed[i] for i in range(a.size(0))], dim=0)
             result = torch.matmul(a, result)
+            
     
     # Look at the total attention between the class token,
     # and the image patches
-    mask = result[0, 0 , 1 :]
+    mask = result[:, 0 , 1 :]
+
     # In case of 224x224 image, this brings us from 196 to 14
     width = int(mask.size(-1)**0.5)
-    mask = mask.reshape(width, width).cpu().numpy()
-    mask = mask / np.max(mask)
+    batch = mask.size(0)
+    mask = mask.reshape(batch, width, width).cpu().numpy()
+    maxed = np.max(mask, axis=(1,2))
+    maxed.shape = (batch, 1, 1)
+    
+    mask = mask / maxed
     return mask    
 
 class VITAttentionRollout:
@@ -94,9 +107,39 @@ class VITAttentionRollout:
         with torch.no_grad():
             output = self.model(input_tensor)
 
+        att = torch.stack(self.attentions)
+
+        results = rollout(att, self.discard_ratio, self.head_fusion)
+        return torch.tensor(results)
+
         att = [list(att) for att in self.attentions]
         att = list(zip(*att))
         results = [torch.Tensor(rollout(attention, self.discard_ratio, self.head_fusion)) for attention in att]
         results = torch.stack(results)
 
         return results
+    
+def main():
+    import timm 
+    from imagenet_validation import ImageNet
+
+    model = timm.models.create_model("vit_base_patch16_224", pretrained=True)
+
+    for block in model.blocks:
+        block.attn.fused_attn = False
+
+    rollout = VITAttentionRollout(model, discard_ratio=0.95)
+
+    #image = torch.rand(16, 3, 224, 224)
+    ds = ImageNet("../imagenet")
+    loader = torch.utils.data.DataLoader(ds, batch_size=2, shuffle=False, pin_memory=True)
+
+    for imgs, labels in loader:
+        mask = rollout(imgs)
+        print(mask[0])
+        break 
+
+    print(mask.shape)
+
+if __name__ == "__main__":
+    main()

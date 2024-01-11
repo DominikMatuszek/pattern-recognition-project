@@ -10,24 +10,11 @@ class SaliencyDropout(torch.nn.Module):
         self.device = device
 
     def forward(self, x):
-        masked = []
+        mask = self.mask # (batch_size, num_tokens)
+        # x shape: (batch_size, num_tokens, num_features)
 
-        b = x.shape[0]
-
-        for i in range(b):
-            mask = self.mask[i]
-            current = x[i]
-
-            # Do not mess with the CLS token
-            cls_token = current[0]
-            current = current[1:]
-
-            selected = torch.index_select(current, 0, mask)
-            selected = torch.cat([cls_token.unsqueeze(0), selected], dim=0)
-
-            masked.append(selected)
-
-        x = torch.stack(masked, dim=0)
+        # We want to pick, for each element of batch, a subset of the token as specified by the mask
+        x = torch.cat([x[i, mask[i], :].unsqueeze(0) for i in range(x.shape[0])], dim=0)
 
         return x 
     
@@ -36,9 +23,15 @@ class SaliencyDropout(torch.nn.Module):
 
         mask_length = mask.shape[1]
         after_dropout = int(mask_length * (1 - self.dropout_rate))
-        _, indices = mask.topk(after_dropout, -1, largest=True, sorted=True)
+        _, indices = mask.topk(after_dropout, -1, largest=True, sorted=False)
 
         indices = indices.to(self.device)
+
+        # Add 1 to every index to account for the CLS token
+        indices = indices + 1
+
+        # Append the CLS token
+        indices = torch.cat([torch.zeros(indices.shape[0], 1, dtype=torch.long, device=self.device), indices], dim=1)
 
         self.mask = indices 
 
@@ -53,7 +46,7 @@ class OptimalSampler(torch.nn.Module):
         for block in query_model.blocks:
             block.attn.fused_attn = False
 
-        self.rollout = VITAttentionRollout(query_model)
+        self.rollout = VITAttentionRollout(query_model, discard_ratio=0.95, device=device)
 
 
         self.dropout = SaliencyDropout(dropout_rate, device=device)
@@ -74,7 +67,7 @@ def main():
     from matplotlib import pyplot as plt
     import torchvision
 
-    sampler = OptimalSampler("vit_base_patch16_224", dropout_rate=0.0)
+    sampler = OptimalSampler("vit_base_patch16_224", dropout_rate=0.5)
 
     image_path = "../imagenet/ILSVRC2012_val_00050000.JPEG"
     image = Image.open(image_path)

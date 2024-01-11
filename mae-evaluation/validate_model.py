@@ -12,7 +12,7 @@ class Validator:
         self.log_file = open(log_file_dir, "w")
 
     def __calculate_accuracy_for_model(self, model, device):
-        batch_size = 512
+        batch_size = 64
         dataset = ImageNet(IMAGENET_VAL_DIR)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=12)
 
