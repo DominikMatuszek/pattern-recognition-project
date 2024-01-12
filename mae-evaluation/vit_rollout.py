@@ -111,33 +111,35 @@ class VITAttentionRollout:
 
         results = rollout(att, self.discard_ratio, self.head_fusion)
         return torch.tensor(results)
-
-        att = [list(att) for att in self.attentions]
-        att = list(zip(*att))
-        results = [torch.Tensor(rollout(attention, self.discard_ratio, self.head_fusion)) for attention in att]
-        results = torch.stack(results)
-
-        return results
     
 def main():
     import timm 
     from imagenet_validation import ImageNet
+    from load_mae import load_mae
+    from matplotlib import pyplot as plt
 
-    model = timm.models.create_model("vit_base_patch16_224", pretrained=True)
+    model = timm.models.create_model("eva02_tiny_patch14_224.mim_in22k", pretrained=True)
+    #model = timm.models.create_model("vit_base_patch16_224", pretrained=True)
+    #model = load_mae()
 
     for block in model.blocks:
         block.attn.fused_attn = False
 
-    rollout = VITAttentionRollout(model, discard_ratio=0.95)
+    rollout = VITAttentionRollout(model, discard_ratio=0.8)
 
     #image = torch.rand(16, 3, 224, 224)
-    ds = ImageNet("../imagenet")
+    ds = ImageNet("../imagenet", size=224)
     loader = torch.utils.data.DataLoader(ds, batch_size=2, shuffle=False, pin_memory=True)
 
     for imgs, labels in loader:
         mask = rollout(imgs)
         print(mask[0])
-        break 
+        figs, axes = plt.subplots(2, 2)
+        axes[0][0].imshow(imgs[0].permute(1,2,0))
+        axes[0][1].imshow(mask[0])
+        axes[1][0].imshow(imgs[1].permute(1,2,0))
+        axes[1][1].imshow(mask[1])
+        plt.show()
 
     print(mask.shape)
 

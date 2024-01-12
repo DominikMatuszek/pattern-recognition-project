@@ -19,8 +19,6 @@ class SaliencyDropout(torch.nn.Module):
         return x 
     
     def set_mask(self, mask : torch.Tensor):
-        self.mask = mask
-
         mask_length = mask.shape[1]
         after_dropout = int(mask_length * (1 - self.dropout_rate))
         _, indices = mask.topk(after_dropout, -1, largest=True, sorted=False)
@@ -36,21 +34,46 @@ class SaliencyDropout(torch.nn.Module):
         self.mask = indices 
 
 class OptimalSampler(torch.nn.Module):
-    def __init__(self, modelname, dropout_rate=0.5, device='cpu'):
+    def __init__(self, model, dropout_rate=0.5, device='cpu', query_model_override=None, drop_name='patch_drop'):
         super(OptimalSampler, self).__init__()
-        query_model = timm.models.create_model(modelname, pretrained=True).to(device)
-        model = timm.models.create_model(modelname, pretrained=True).to(device)
+
+        # If model is a string, load the model from timm
+        if isinstance(model, str):
+            print("Initializing model from timm")
+            modelname = model 
+            query_model = timm.models.create_model(modelname, pretrained=True).to(device)
+            model = timm.models.create_model(modelname, pretrained=True).to(device)
+
+            if query_model_override is not None:
+                print("Overriden query model")
+                query_model = timm.models.create_model(query_model_override, pretrained=True).to(device)
+
+        elif isinstance(model, torch.nn.Module):
+            raise Exception("Model must be a string or function returning model; not a torch.nn.Module. Because we need two of them.")
+        elif callable(model):
+            # If model is a callable, assume it is a function that returns a model
+            # Yes, I know, I know
+            print("Initializing model from function")
+            query_model = model().to(device)
+            model = model().to(device)
+
+            if query_model_override is not None:
+                print("Overriden query model")
+                query_model = query_model_override().to(device)
 
         self.query_model = query_model
 
         for block in query_model.blocks:
             block.attn.fused_attn = False
 
-        self.rollout = VITAttentionRollout(query_model, discard_ratio=0.95, device=device)
+        self.rollout = VITAttentionRollout(query_model, discard_ratio=0.8, device=device)
 
 
         self.dropout = SaliencyDropout(dropout_rate, device=device)
-        model.patch_drop = self.dropout 
+        
+        setattr(model, drop_name, self.dropout)
+        
+        #model.patch_drop = self.dropout 
         
         self.model = model
 

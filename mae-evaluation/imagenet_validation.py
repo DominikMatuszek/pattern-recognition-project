@@ -6,7 +6,7 @@ from config import IMAGENET_VAL_DIR
 import os 
 
 class ImageNet(torch.utils.data.Dataset):
-    def __init__(self, dir):
+    def __init__(self, dir, size=224):
         super(ImageNet, self).__init__()
         self.dir = dir
         self.imgs = os.listdir(dir)
@@ -15,13 +15,16 @@ class ImageNet(torch.utils.data.Dataset):
         labels = open("val.txt", "r").readlines()
         labels = [int(label.strip().split()[1]) for label in labels]
         self.labels = labels
+        self.size = size
 
     def __len__(self):
         return len(self.imgs)
 
     def __getitem__(self, idx):
+        size = self.size 
+        
         img = Image.open(f"{self.dir}/{self.imgs[idx]}")
-        img = img.resize((224, 224))
+        img = img.resize((size, size))
 
         # Convert to RGB if necessary
         if img.mode != "RGB":

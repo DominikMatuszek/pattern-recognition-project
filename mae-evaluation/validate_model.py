@@ -7,13 +7,14 @@ from config import IMAGENET_VAL_DIR
 from tqdm import tqdm 
 
 class Validator:
-    def __init__(self, log_file_dir):
+    def __init__(self, log_file_dir, size=224):
         self.log_file_dir = log_file_dir
         self.log_file = open(log_file_dir, "w")
+        self.size = size
 
     def __calculate_accuracy_for_model(self, model, device):
-        batch_size = 64
-        dataset = ImageNet(IMAGENET_VAL_DIR)
+        batch_size = 256
+        dataset = ImageNet(IMAGENET_VAL_DIR, size=self.size)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=12)
 
         model = model.to(device)
