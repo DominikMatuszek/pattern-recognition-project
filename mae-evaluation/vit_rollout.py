@@ -30,7 +30,15 @@ SOFTWARE.
 import torch
 import numpy as np
 from config import IMAGENET_VAL_DIR
+import torch.nn as nn
+import resnet
+from torchvision.transforms.functional import resize
 
+
+def create_student():
+    model_student = resnet.ResNet(input_shape=[1, 3, 90, 90], depth=26, base_channels=6)  ## ~ 160k parameters
+
+    return model_student
 
 def rollout(attentions, discard_ratio, head_fusion):
     # attentions = [attention.unsqueeze(0) for attention in attentions] # type: list[torch.Tensor]
@@ -128,21 +136,26 @@ def main():
     for block in model.blocks:
         block.attn.fused_attn = False
 
-    rollout = VITAttentionRollout(model, discard_ratio=0.8)
+    # rollout = VITAttentionRollout(model, discard_ratio=0.8)
 
     ds = ImageNet(IMAGENET_VAL_DIR, size=224)
     loader = torch.utils.data.DataLoader(
-        ds, batch_size=2, shuffle=False, pin_memory=True
+        ds, batch_size=2, shuffle=False, pin_memory=False
     )
+    student = create_student()
+    weights = torch.load("./deit_tiny_mean.pth")
+    student.load_state_dict(weights)
+    rollout = student
 
     for imgs, labels in loader:
+        imgs = resize(imgs,size=(90,90),antialias=True)
+        print(imgs.shape)
         mask = rollout(imgs)
-        print(mask[0])
         figs, axes = plt.subplots(2, 2)
         axes[0][0].imshow(imgs[0].permute(1, 2, 0))
-        axes[0][1].imshow(mask[0])
+        axes[0][1].imshow(mask[0].detach().numpy().reshape((14,14)))
         axes[1][0].imshow(imgs[1].permute(1, 2, 0))
-        axes[1][1].imshow(mask[1])
+        axes[1][1].imshow(mask[1].detach().numpy().reshape((14,14)))
         plt.show()
 
     print(mask.shape)
