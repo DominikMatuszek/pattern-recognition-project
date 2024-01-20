@@ -37,7 +37,6 @@ def main():
     from matplotlib import pyplot as plt
 
     dataset = ImageNet(IMAGENET_VAL_DIR)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=True)
 
     img, label = dataset[49999]
 
