@@ -1,18 +1,16 @@
 import torch 
-import timm 
-
 from validate_model import Validator
-from optimal_sampler import OptimalSampler
+from optimal_sampler import ProgrammableSampler
 
 
 def main():
     validator = Validator("optimal_dropout.txt", size=224)
     device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
-    for dropout in range(0, 1):
+    for dropout in range(0, 10):
         dp = dropout / 10
         
-        model = OptimalSampler(
+        model = ProgrammableSampler(
             "vit_large_patch14_clip_224.openai_ft_in12k_in1k",
             dropout_rate=dp,
             device=device,
